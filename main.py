@@ -8,18 +8,6 @@ import numpy as np
 import os
 import sys
 
-# Module für das Herunterladen und Verarbeiten der Rohdaten (deaktiviert)
-#import warnings
-#import requests
-#from bs4 import BeautifulSoup
-#import tarfile
-#from skimage.transform import resize
-#from osgeo import osr
-#import wradlib as wrl
-
-# Unterdrücke Warnungen von Xarray und Scikit-Image
-#warnings.filterwarnings('ignore')
-
 
 class LoadingScreen(QWidget):
     """Ladescreen-Klasse zur Anzeige während des Ladens von Daten"""
@@ -161,7 +149,7 @@ class MainWindow(QMainWindow):
         # Button zum Herunterladen und Darstellen aktueller Radardaten
         self.btn_load = QPushButton('Aktuelle Daten herunterladen')
         self.btn_load.setFont(def_font)
-        self.btn_load.setToolTip('Deaktiviert wegen fehlender Dependencies')
+        self.btn_load.setToolTip('Deaktiviert')
 
         ## PyQtGraph Widgets
         # GraphicsLayoutWidget als Hauptwidget der Plotdarstellung
@@ -206,7 +194,6 @@ class MainWindow(QMainWindow):
         # Button, Slider, Checkbox Signale
         self.cb_show_radar.stateChanged.connect(self.show_radar)
         self.sld_speed.valueChanged.connect(self.update_speed)
-        self.btn_load.clicked.connect(self.download_data)
         self.btn_play.clicked.connect(self.play_slideshow)
         self.sld_radar.valueChanged.connect(self.slider_changed)
 
@@ -439,7 +426,6 @@ class MainWindow(QMainWindow):
         self.btn_play.setEnabled(True)
         self.sld_radar.setEnabled(True)
         self.sld_speed.setEnabled(True)
-        #self.btn_load.setEnabled(True)
 
 
     # Methode zum Ein- und Ausblenden der Radardarstellung
@@ -450,29 +436,13 @@ class MainWindow(QMainWindow):
 
     # Methode zum Laden der Satellitenkarte
     def get_map(self):
-        ##### Workaround durch Laden der Satellitenkarte aus Numpy-Datei ####
         with open(os.path.join(self.cwd, 'satellite.npy'), 'rb') as f:
             rgb = np.load(f)
         return rgb
 
 
-        #### Nicht verwendet wegen Dependencies ####
-        # Satellitenbild einlesen aus Rasterdatei
-        tile_file = 'ESRI_Satellite_DE_rgb_rescaled.tif'
-        ds = wrl.io.open_raster(os.path.join(self.cwd, tile_file))
-        r = ds.GetRasterBand(1).ReadAsArray()
-        g = ds.GetRasterBand(2).ReadAsArray()
-        b = ds.GetRasterBand(3).ReadAsArray()
-        rgb = np.dstack((r, g, b))
-        rgb = np.rot90(rgb, k=3)
-
-        return rgb
-
-
     # Methode zum Berechnen und Laden eines neuen Datensatzes
     def load_data(self, filename):
-        #### Workaround zum Laden eines vorbereiteten Datensatzes ####
-
         # Variablen initialisieren
         radar_data = []
         # Beispielzeitstempel
@@ -486,96 +456,6 @@ class MainWindow(QMainWindow):
 
         # Liste mit Daten returnen
         return radar_data
-
-
-        #### Nicht verwendet wegen Dependencies ####
-        # Projektionsinformationen definieren
-        proj_stereo = wrl.georef.create_osr('dwd-radolan')
-        proj_wgs = osr.SpatialReference()
-        proj_wgs.ImportFromEPSG(4326)
-        radolan_grid_xy = wrl.georef.get_radolan_grid(1200, 1100)
-        radolan_grid_ll = wrl.georef.reproject(radolan_grid_xy, projection_source=proj_stereo, projection_target=proj_wgs)
-        new_coords = dict(lon=(['y', 'x'], radolan_grid_ll[:, :, 0]), lat=(['y', 'x'], radolan_grid_ll[:, :, 1]))
-
-        # Tarfile öffnen zum Lesen
-        t = tarfile.open(os.path.join(self.cwd, filename), 'r:bz2')
-        # Alte Daten clearen
-        radar_data = []
-        timestamp = ''
-        # Loop durch alle Subdateien der Tarfile
-        for member in t.getmembers():
-            # Subdatei extrahieren
-            t.extract(member, path=self.cwd)
-            # Zeitstempel und Vorhersageminuten aus Dateiname extrahieren
-            timestamp = member.name.split('_')[1].split('RV')[1]  # utc
-            min_ahead = member.name[-3:]
-
-            # Radardaten aus Subdatei lesen
-            with wrl.io.open_radolan_dataset(os.path.join(self.cwd, member.name)) as ds:
-                data = ds.RV
-                # Neues Koordinatensystem zuweisen
-                data = data.assign_coords(new_coords)
-                # Daten filtern
-                data = data.where(data > 0).where(data < 1200)
-                # Resolution anpassen
-                target_shape = (4423, 4222) # Größe der Satellitenkarte
-                data = resize(data.values, target_shape, order=0, preserve_range=True)
-                # Daten der Subdatei zu Liste mit allen Daten hinzufügen
-                radar_data.append({'timestamp': timestamp, 'min_ahead': min_ahead, 'data': data})
-
-            # Extrahierte Subdatei löschen
-            os.remove(os.path.join(self.cwd, member.name))
-        # Tarfile schließen
-        t.close()
-        # Tarfile löschen
-        if filename != 'DE1200_RV2301091610.tar.bz2':
-            os.remove(os.path.join(self.cwd, filename))
-
-        # # Data Arrays in komprimierter Numpy Datei speichern
-        # savez_dict = dict()
-        # for d in radar_data:
-        #     savez_dict[d['min_ahead']] = d['data']
-        # np.savez_compressed(os.path.join(self.cwd, f'{timestamp}_radar_data.npz'), **savez_dict)
-
-        # Liste mit Daten returnen
-        return radar_data
-
-
-    #### Nicht verwendet wegen Dependencies ####
-    # Methode zum Herunterladen eines aktuellen Datensatzes
-    def download_data(self):
-        # URL für RV Radardaten aus DWD Open Data
-        url = 'https://opendata.dwd.de/weather/radar/composit/rv/'
-
-        # Variablen initialisieren
-        filename = ''
-        download_url = ''
-
-        # HTML der URL laden
-        soup = BeautifulSoup(requests.get(url).text, 'lxml')
-
-        # Durch alle <a> tags loopen und aktuelle Datei finden
-        for a in soup.find_all('a'):
-            # Dateiname aus href-Attribut extrahieren
-            filename = a.get('href')
-            # Prüfen ob aktuelle Datei
-            if 'RV_LATEST.tar.bz2' in filename:
-                # Download URL festlegen und Schleife verlassen
-                download_url = url + filename
-                break
-
-        # Prüfen ob Dateiname und Download URL festgelegt wurden
-        if filename and download_url:
-            # Download URL anfragen und Daten in r ablegen
-            r = requests.get(download_url)
-            # Wiederholen bei nicht erfolgreicher Anfrage
-            while r.status_code != 200:
-                r = requests.get(download_url)
-            # Inhalt der Anfrage in .tar.bz2-Datei schreiben
-            open(os.path.join(self.cwd, filename), 'wb').write(r.content)
-
-            # Daten aus heruntergeladener Datei mit Worker-Thread laden
-            self.load_with_worker(filename)
 
 
 if __name__ == '__main__':
