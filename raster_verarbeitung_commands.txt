@@ -1,0 +1,9 @@
+1. Rasterdatei resamplen/Resolution ändern/Anzahl Pixel ändern
+    gdalwarp -tr <PIXEL_SIZE_X> <PIXEL_SIZE_Y> input.tif output.tif
+    gdalwarp -tr 0.001 -0.001 ESRI_Satellite_Germany.tif ESRI_Satellite_Germany_3.tif
+2. Rasterdatei Remove Alphaband/remove 4th band/only keep rgb bands/keep 1st, 2nd, 3rd band
+    gdal_translate -b 1 -b 2 -b 3 input.tif output.tif
+    gdal_translate -b 1 -b 2 -b 3 ESRI_Satellite_Germany_3.tif ESRI_Satellite_Germany_3_rgb.tif
+3. Rasterdatei rescalen/rescale to values between 0 and 1
+    rescale_multiband_raster.py ausführen
+
