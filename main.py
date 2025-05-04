@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
         # ROI-Darstellung
         self.update_roi(self.roi)
         # Beispieldatensatz laden
-        self.load_with_worker('DE1200_RV2301091610.tar.bz2')
+        self.load_with_worker('2301091610_radar_data.npz')
     
 
     # Methode zum Versetzen der ROI per Klick auf Karte
@@ -443,13 +443,11 @@ class MainWindow(QMainWindow):
 
     # Methode zum Berechnen und Laden eines neuen Datensatzes
     def load_data(self, filename):
-        # Variablen initialisieren
         radar_data = []
-        # Beispielzeitstempel
-        timestamp = '2301091610'
+        timestamp = filename.split('_')[0]
 
         # Numpy Arrays laden aus Datei
-        radar_data_loaded = np.load(os.path.join(self.cwd, f'{timestamp}_radar_data.npz'))
+        radar_data_loaded = np.load(os.path.join(self.cwd, filename))
         # Durch geladene Arrays loopen und zu Liste der Radardaten hinzufügen
         for min_ahead, data in radar_data_loaded.items():
             radar_data.append({'timestamp': timestamp, 'min_ahead': min_ahead, 'data': data})
