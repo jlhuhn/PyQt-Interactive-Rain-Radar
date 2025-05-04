@@ -9,6 +9,8 @@ PyQt6==6.4.2
 pyqt6-plugins==6.4.2.2.3
 PyQt6-Qt6==6.4.3
 pyqt6-tools==6.4.2.3.3
+PyQt6-WebEngine==6.9.0
+PyQt6-WebEngine-Qt6==6.9.0
 PyQt6_sip==13.10.0
 pyqtgraph==0.13.7
 python-dotenv==1.1.0
